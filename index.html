@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snowblower Comparator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Snowblower Options Comparator</h1>
+    <section id="inputs">
+        <h2>Assumptions</h2>
+        <label>Annual Events: <input type="number" id="annual-events" value="12"></label>
+        <label>Electricity Cost ($/kWh): <input type="number" step="0.01" id="elec-cost" value="0.25"></label>
+        <label>Gas Cost ($/gal): <input type="number" step="0.01" id="gas-cost" value="3.53"></label>
+        <label>Inflation Rate (%/yr): <input type="number" step="0.1" id="inflation" value="0"></label>
+
+        <h2>Electric Options</h2>
+        <div id="electric-options"></div>
+        <button onclick="addOption('electric')">Add Electric</button>
+
+        <h2>Gas Options</h2>
+        <div id="gas-options"></div>
+        <button onclick="addOption('gas')">Add Gas</button>
+
+        <h2>Service Options</h2>
+        <div id="service-options"></div>
+        <button onclick="addOption('service')">Add Service</button>
+    </section>
+
+    <button onclick="calculate()">Calculate TCO</button>
+
+    <section id="results"></section>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+body { font-family: Arial, sans-serif; max-width: 800px; margin: auto; padding: 20px; }
+section { margin-bottom: 20px; }
+.option { border: 1px solid #ccc; padding: 10px; margin: 5px 0; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+th { background-color: #f2f2f2; }
