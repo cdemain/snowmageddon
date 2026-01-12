@@ -1,16 +1,11 @@
 // Snowblower TCO Comparator
 // Author: Grok (with user refinements)
 // Purpose: Compare total cost of ownership for electric/gas snowblowers and service
-// Version: 2026-01 - improved output formatting, battery pair cost clarity, visual best-value highlighting
+// Version: 2026-01 - improved output, battery pair cost clarity, seasonal monthly service (6 mo)
 // Changes:
-//   - Added thousands separators
-//   - Highlight lowest cost per horizon
-//   - Clearer assumptions summary
-//   - Battery replacement cost now explicitly for both batteries
-// TODO:
-//   - Add $/ton metric
-//   - Sensitivity sliders
-//   - Export CSV
+//   - Removed initial cost & annual maint from service options
+//   - Monthly service now = 6-month seasonal contract (not 12)
+//   - Enhanced input validation & UI clarity
 
 const horizons = {
   short: { years: 2, label: "Short (2y)" },
@@ -29,9 +24,15 @@ function addOption(type) {
 
   let html = `
     <label>Name: <input type="text" value="${type.charAt(0).toUpperCase() + type.slice(1)} ${id + 1}"></label>
-    <label>Initial Cost ($): <input type="number" value="0"></label>
-    <label>Annual Maintenance ($): <input type="number" value="0"></label>
   `;
+
+  // Only add initial & maint for equipment (electric/gas)
+  if (type !== 'service') {
+    html += `
+      <label>Initial Cost ($): <input type="number" value="0"></label>
+      <label>Annual Maintenance ($): <input type="number" value="0"></label>
+    `;
+  }
 
   if (type === 'electric') {
     html += `
@@ -50,7 +51,7 @@ function addOption(type) {
     html += `
       <label>Type:
         <select>
-          <option value="monthly">Monthly (Unlimited)</option>
+          <option value="monthly">Seasonal Monthly (6 months)</option>
           <option value="per-event">Per-Event</option>
         </select>
       </label>
@@ -76,24 +77,32 @@ function getInputs(type) {
     const inputs = div.querySelectorAll('input, select');
     const data = {
       name: inputs[0].value.trim() || `${type} ${id+1}`,
-      initial: parseFloat(inputs[1].value) || 0,
-      maint: parseFloat(inputs[2].value) || 0
     };
 
-    let idx = 3;
+    let idx = 1; // start after name
+
+    // Only parse initial/maint if they exist (electric/gas only)
+    if (type !== 'service') {
+      data.initial = parseFloat(inputs[idx++].value) || 0;
+      data.maint   = parseFloat(inputs[idx++].value) || 0;
+    } else {
+      data.initial = 0;
+      data.maint   = 0;
+    }
+
     if (type === 'electric') {
-      data.batteryAh = parseFloat(inputs[idx++].value) || 7.5;
-      data.voltage = parseFloat(inputs[idx++].value) || 56;
+      data.batteryAh           = parseFloat(inputs[idx++].value) || 7.5;
+      data.voltage             = parseFloat(inputs[idx++].value) || 56;
       data.baseChargesPerEvent = parseFloat(inputs[idx++].value) || 1;
-      data.maxCycles = parseInt(inputs[idx++].value) || 1000;
-      data.calendarLife = parseInt(inputs[idx++].value) || 3;
-      data.batteryCost = parseFloat(inputs[idx++].value) || 500;  // for both batteries
+      data.maxCycles           = parseInt(inputs[idx++].value) || 1000;
+      data.calendarLife        = parseInt(inputs[idx++].value) || 3;
+      data.batteryCost         = parseFloat(inputs[idx++].value) || 500;  // for both
     } else if (type === 'gas') {
       data.baseGalPerEvent = parseFloat(inputs[idx++].value) || 0.75;
     } else if (type === 'service') {
-      data.serviceType = inputs[idx++].value;
-      data.baseCost = parseFloat(inputs[idx++].value) || 0;
-      data.priceIncrease = (parseFloat(inputs[idx++].value) || 5) / 100;
+      data.serviceType     = inputs[idx++].value;
+      data.baseCost        = parseFloat(inputs[idx++].value) || 0;
+      data.priceIncrease   = (parseFloat(inputs[idx++].value) || 5) / 100;
     }
     return data;
   });
@@ -123,7 +132,7 @@ function formatCurrency(num) {
 }
 
 function calculateTCO(option, globals, years) {
-  let total = option.initial;
+  let total = option.initial || 0;
   let opCost = 0;
   let maintTotal = 0;
   let batteryReplaces = 0;
@@ -137,7 +146,7 @@ function calculateTCO(option, globals, years) {
 
   for (let y = 1; y <= years; y++) {
     const inflFactor = Math.pow(1 + globals.inflation, y - 1);
-    maintTotal += option.maint * inflFactor;
+    maintTotal += (option.maint || 0) * inflFactor;
 
     if (option.type === 'electric') {
       const capacityKwh = 2 * option.batteryAh * option.voltage / 1000;
@@ -158,10 +167,13 @@ function calculateTCO(option, globals, years) {
       opCost += globals.events * adjGal * globals.gasCost * inflFactor;
     } else if (option.type === 'service') {
       let yearCost = option.baseCost;
-      if (option.serviceType === 'monthly') yearCost *= 12;
-      else yearCost *= globals.events;
+      if (option.serviceType === 'monthly') {
+        yearCost *= 6;  // 6-month seasonal contract
+      } else {
+        yearCost *= globals.events;
+      }
 
-      yearCost *= (globals.area / 2000); // simple area scaling
+      yearCost *= (globals.area / 2000); // area scaling
       const priceFactor = Math.pow(1 + option.priceIncrease, y - 1);
       opCost += yearCost * priceFactor * inflFactor;
     }
@@ -186,7 +198,6 @@ function calculate() {
   const tonsPerEvent = estimateTonsPerEvent(globals);
   const annualTons = tonsPerEvent * globals.events;
 
-  // Calculate all TCOs
   const results = allOptions.map(opt => ({
     ...opt,
     short: calculateTCO(opt, globals, 2),
@@ -194,11 +205,10 @@ function calculate() {
     long: calculateTCO(opt, globals, 10)
   }));
 
-  const minShort = Math.min(...results.map(r => r.short));
+  const minShort  = Math.min(...results.map(r => r.short));
   const minMedium = Math.min(...results.map(r => r.medium));
-  const minLong = Math.min(...results.map(r => r.long));
+  const minLong   = Math.min(...results.map(r => r.long));
 
-  // Sort by short-term cost for easier scanning
   results.sort((a, b) => a.short - b.short);
 
   let html = `
@@ -221,7 +231,7 @@ function calculate() {
   `;
 
   results.forEach(r => {
-    const typeLabel = r.type === 'service' ? ` (${r.serviceType})` : '';
+    const typeLabel = r.type === 'service' ? ` (${r.serviceType === 'monthly' ? 'Seasonal Monthly' : 'Per-Event'})` : '';
     html += `
       <tr>
         <td>${r.name}${typeLabel}</td>
