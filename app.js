@@ -1,8 +1,8 @@
 // Snowblower Comparator App
 // Author: Grok
 // Purpose: Calculate TCO for snowblower options
-// Changes: Added area, total snowfall, renamed events; estimate tons per event; electric runtime scaling and battery lifespan default 3yr
-// TODO: Add sensitivity analysis
+// Changes: Updated electric calc to use battery Ah, voltage, base charges per event; added max cycles and calendar life for replacements; normalized scaleFactor to avg snow (6.5in/event)
+// TODO: Add sensitivity analysis; optional service scaling with snow depth
 // Bugs: None known
 
 const horizons = {
@@ -28,8 +28,11 @@ function addOption(type) {
 
   if (type === 'electric') {
     html += `
-      <label>Base kWh per Event (for avg snow): <input type="number" step="0.1" value="0.75"></label>
-      <label>Battery Lifespan (years): <input type="number" value="3"></label>
+      <label>Battery Size per Battery (Ah): <input type="number" step="0.1" value="7.5"></label>
+      <label>Battery Voltage (V): <input type="number" value="56"></label>
+      <label>Base Number of Charges per Event (for avg snow): <input type="number" step="0.1" value="1"></label>
+      <label>Max Battery Cycles: <input type="number" value="1000"></label>
+      <label>Battery Calendar Life (years): <input type="number" value="3"></label>
       <label>Battery Replace Cost ($): <input type="number" value="500"></label>
     `;
   } else if (type === 'gas') {
@@ -72,8 +75,11 @@ function getInputs(type) {
 
     let idx = 3;
     if (type === 'electric') {
-      data.baseKwhPerEvent = parseFloat(inputs[idx++].value);
-      data.batteryLife = parseInt(inputs[idx++].value);
+      data.batteryAh = parseFloat(inputs[idx++].value);
+      data.voltage = parseFloat(inputs[idx++].value);
+      data.baseChargesPerEvent = parseFloat(inputs[idx++].value);
+      data.maxCycles = parseInt(inputs[idx++].value);
+      data.calendarLife = parseInt(inputs[idx++].value);
       data.batteryCost = parseFloat(inputs[idx++].value);
     } else if (type === 'gas') {
       data.baseGalPerEvent = parseFloat(inputs[idx++].value);
@@ -97,9 +103,9 @@ function getGlobalInputs() {
   };
 }
 
-function estimateTonsPerEvent(globals) {
-  const depthPerEventIn = globals.totalSnowfall / globals.events;
-  const depthFt = depthPerEventIn / 12;
+function estimateTonsPerEvent(globals, isBase = false) {
+  const depthIn = isBase ? 6.5 : globals.totalSnowfall / globals.events;
+  const depthFt = depthIn / 12;
   const volumeCuFt = globals.area * depthFt;
   const densityLbsPerCuFt = 12; // Avg for fresh snow
   const totalLbs = volumeCuFt * densityLbsPerCuFt;
@@ -112,20 +118,32 @@ function calculateTCO(option, globals, years) {
   let maintTotal = 0;
   let batteryReplaces = 0;
 
+  const baseTons = estimateTonsPerEvent(globals, true);
   const tonsPerEvent = estimateTonsPerEvent(globals);
-  // Scale factor: assume base for 1 ton/event; linear scale (simplified)
-  const scaleFactor = tonsPerEvent; 
+  const scaleFactor = baseTons > 0 ? tonsPerEvent / baseTons : 1;
+
+  let currentAge = 0;
+  let currentCycles = 0;
 
   for (let y = 1; y <= years; y++) {
     const inflFactor = Math.pow(1 + globals.inflation, y - 1);
     maintTotal += option.maint * inflFactor;
 
     if (option.type === 'electric') {
-      // Runtime scales with tons; multiple charges if > base (assume 1 charge base)
-      const adjKwhPerEvent = option.baseKwhPerEvent * scaleFactor;
+      const capacityKwh = 2 * option.batteryAh * option.voltage / 1000;
+      const adjChargesPerEvent = option.baseChargesPerEvent * scaleFactor;
+      const adjKwhPerEvent = adjChargesPerEvent * capacityKwh;
       opCost += globals.events * adjKwhPerEvent * globals.elecCost * inflFactor;
-      const replaces = Math.floor(y / option.batteryLife);
-      batteryReplaces += replaces * option.batteryCost * inflFactor;
+
+      currentAge++;
+      const cyclesThisYear = globals.events * adjChargesPerEvent;
+      currentCycles += cyclesThisYear;
+
+      if (currentAge >= option.calendarLife || currentCycles >= option.maxCycles) {
+        batteryReplaces += option.batteryCost * inflFactor;
+        currentAge = 0;
+        currentCycles = 0;
+      }
     } else if (option.type === 'gas') {
       const adjGalPerEvent = option.baseGalPerEvent * scaleFactor;
       opCost += globals.events * adjGalPerEvent * globals.gasCost * inflFactor;
@@ -136,7 +154,6 @@ function calculateTCO(option, globals, years) {
       } else {
         yearCost *= globals.events; // Per-event
       }
-      // Optional: scale service cost with area/snow (assume base includes avg; or add factor)
       yearCost *= (globals.area / 2000); // Simple scale from default 2000sqft
       const priceFactor = Math.pow(1 + option.priceIncrease, y - 1);
       opCost += yearCost * priceFactor * inflFactor;
