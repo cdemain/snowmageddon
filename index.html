@@ -3,34 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snowblower Comparator</title>
+    <title>Snowblower TCO Comparator</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <h1>Snowblower Options Comparator</h1>
+
     <section id="inputs">
         <h2>Assumptions</h2>
-        <label>Area to Clear (sqft): <input type="number" id="area" value="2000"></label>
-        <label>Plan for Snow Events: <input type="number" id="snow-events" value="18"></label>
-        <label>Plan for Total Snowfall (in): <input type="number" id="total-snowfall" value="100"></label>
-        <label>Electricity Cost ($/kWh): <input type="number" step="0.01" id="elec-cost" value="0.25"></label>
-        <label>Gas Cost ($/gal): <input type="number" step="0.01" id="gas-cost" value="3.53"></label>
-        <label>Inflation Rate (%/yr): <input type="number" step="0.1" id="inflation" value="5"></label>
+        <div style="display: grid; gap: 10px; max-width: 500px;">
+            <label>Area to Clear (sqft): <input type="number" id="area" value="2000"></label>
+            <label>Plan for Snow Events: <input type="number" id="snow-events" value="18"></label>
+            <label>Plan for Total Snowfall (in): <input type="number" id="total-snowfall" value="100"></label>
+            <label>Electricity Cost ($/kWh): <input type="number" step="0.01" id="elec-cost" value="0.25"></label>
+            <label>Gas Cost ($/gal): <input type="number" step="0.01" id="gas-cost" value="3.53"></label>
+            <label>Inflation Rate (%/yr): <input type="number" step="0.1" id="inflation" value="5"></label>
+        </div>
 
         <h2>Electric Options</h2>
         <div id="electric-options"></div>
-        <button onclick="addOption('electric')">Add Electric</button>
+        <button onclick="addOption('electric')">Add Electric Option</button>
 
         <h2>Gas Options</h2>
         <div id="gas-options"></div>
-        <button onclick="addOption('gas')">Add Gas</button>
+        <button onclick="addOption('gas')">Add Gas Option</button>
 
         <h2>Service Options</h2>
         <div id="service-options"></div>
-        <button onclick="addOption('service')">Add Service</button>
+        <button onclick="addOption('service')">Add Service Option</button>
     </section>
 
-    <button onclick="calculate()">Calculate TCO</button>
+    <button onclick="calculate()" style="margin: 20px 0; padding: 10px 20px; font-size: 1.1em;">Calculate TCO</button>
 
     <section id="results"></section>
 

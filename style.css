@@ -1,6 +1,63 @@
-body { font-family: Arial, sans-serif; max-width: 800px; margin: auto; padding: 20px; }
-section { margin-bottom: 20px; }
-.option { border: 1px solid #ccc; padding: 10px; margin: 5px 0; }
-table { border-collapse: collapse; width: 100%; }
-th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-th { background-color: #f2f2f2; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+    line-height: 1.5;
+}
+
+h1, h2 {
+    margin-top: 1.5em;
+}
+
+.option {
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 6px;
+    background: #f9f9f9;
+}
+
+label {
+    display: block;
+    margin: 8px 0;
+}
+
+input, select {
+    padding: 6px;
+    width: 180px;
+    box-sizing: border-box;
+}
+
+button {
+    padding: 8px 16px;
+    margin: 5px 0;
+    cursor: pointer;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1em;
+}
+
+th, td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+th {
+    background: #f0f0f0;
+    font-weight: 600;
+}
+
+tr:nth-child(even) {
+    background: #fafafa;
+}
+
+.highlight {
+    font-weight: bold;
+    color: #006400;
+    background: #e6ffe6;
+}
